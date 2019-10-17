@@ -9,20 +9,21 @@ module Fastlane
       # valid action params
 
       ANDROID_ARGS_MAP = {
-        keystore_path:        'keystore',
-        keystore_password:    'storePassword',
-        key_password:         'password',
-        keystore_alias:       'alias',
-        build_number:         'versionCode',
-        min_sdk_version:      'gradleArg=-PcdvMinSdkVersion',
-        cordova_no_fetch:     'cordovaNoFetch'
+        keystore_path:              'keystore',
+        keystore_password:          'storePassword',
+        key_password:               'password',
+        keystore_alias:             'alias',
+        build_number:               'versionCode',
+        min_sdk_version:            'gradleArg=-PcdvMinSdkVersion',
+        cordova_no_fetch:           'cordovaNoFetch'
       }
 
       IOS_ARGS_MAP = {
-        type:                 'packageType',
-        team_id:              'developmentTeam',
-        provisioning_profile: 'provisioningProfile',
-        build_flag:           'buildFlag'
+        type:                       'packageType',
+        team_id:                    'developmentTeam',
+        provisioning_profile:       'provisioningProfile',
+        build_flag:                 'buildFlag',
+        automatic_provisioning:     'automaticProvisioning'
       }
 
       # extract arguments only valid for the platform from all arguments
@@ -39,6 +40,10 @@ module Fastlane
                 platform_args << "--#{cli_param}=#{flag.shellescape}"
               end
             end
+          # Handle boolean
+          elsif param_value.is_a?(TrueClass) || param_value.is_a?(FalseClass)
+            param_value = (param_value) ? "true" : "false";
+            platform_args << "--#{cli_param}=#{param_value.shellescape}"
           # handle all other cases
           else
             unless param_value.to_s.empty?
@@ -61,7 +66,7 @@ module Fastlane
       def self.get_ios_args(params)
         app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
 
-        if params[:provisioning_profile].empty?
+        if params[:provisioning_profile].empty? && !params[:automatic_provisioning]
           # If `match` or `sigh` were used before this, use the certificates returned from there
           params[:provisioning_profile] = ENV['SIGH_UUID'] || ENV["sigh_#{app_identifier}_#{params[:type].sub('-', '')}"]
         end
@@ -100,10 +105,13 @@ module Fastlane
         args << '--device' if params[:device]
         args << '--prod' if params[:prod]
         args << '--browserify' if params[:browserify]
-        args << '--configuration' if params[:configuration]
 
         if !params[:cordova_build_config_file].to_s.empty?
           args << "--buildConfig=#{Shellwords.escape(params[:cordova_build_config_file])}"
+        end
+        
+        if !params[:configuration].to_s.empty?
+          args << "--configuration=#{params[:configuration]}"
         end
 
         android_args = self.get_android_args(params) if params[:platform].to_s == 'android'
@@ -307,6 +315,21 @@ module Fastlane
             is_string: true,
             optional: true,
             default_value: ''
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :configuration,
+            env_name: "CONFIGURATION",
+            description: "Call `ionic cordova compile` with `--configuration=<configuration>` to specify the angular configuration",
+            is_string: true,
+            optional: true,
+            default_value: ''
+          ),
+          FastlaneCore::ConfigItem.new(
+            key: :automatic_provisioning,
+            env_name: "AUTOMATIC_PROVISIONING",
+            description: "Turns automatic provisioning for XCode on/off",
+            default_value: true,
+            is_string: false
           )
         ]
       end
