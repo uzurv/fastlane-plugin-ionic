@@ -40,14 +40,10 @@ module Fastlane
                 platform_args << "--#{cli_param}=#{flag.shellescape}"
               end
             end
-          # Handle boolean
-          elsif param_value.is_a?(TrueClass) || param_value.is_a?(FalseClass)
-            param_value = (param_value) ? "true" : "false";
-            platform_args << "--#{cli_param}=#{param_value.shellescape}"
           # handle all other cases
           else
             unless param_value.to_s.empty?
-              platform_args << "--#{cli_param}=#{param_value.shellescape}"
+              platform_args << "--#{cli_param}=#{param_value.to_s.shellescape}"
             end
           end
         end
